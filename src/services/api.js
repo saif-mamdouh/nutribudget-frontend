@@ -1,7 +1,10 @@
 import axios from 'axios'
 
+// Use VITE_API_URL in production (Vercel), fallback to /api/v1 for local dev (Vite proxy)
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: BASE_URL,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
@@ -20,7 +23,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const { data } = await axios.post('/api/v1/auth/refresh', { refresh_token: refresh })
+          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refresh_token: refresh })
           localStorage.setItem('access_token', data.access_token)
           err.config.headers.Authorization = `Bearer ${data.access_token}`
           return api(err.config)
