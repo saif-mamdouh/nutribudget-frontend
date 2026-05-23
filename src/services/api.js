@@ -58,7 +58,7 @@ export const productAPI = {
   },
   // ← FIX: removed trailing slash (was causing 307 redirect → lost auth token)
   list: ({ search, ...rest } = {}) =>
-    api.get('/products', { params: { ...(search ? { q: search } : {}), ...rest } }),
+    api.get('/products/', { params: { ...(search ? { q: search } : {}), ...rest } }),
   stats:  ()         => api.get('/products/stats'),
   update: (id, data) => api.patch(`/products/${id}`, data),
 }
@@ -122,10 +122,10 @@ export const adminAPI = {
 
 // ── Recipes ───────────────────────────────────────────────────────────────────
 export const recipeAPI = {
-  list:   (params)   => api.get('/recipes', { params }),
+  list: (params) => api.get('/recipes/', { params }),
   get:    (id)       => api.get(`/recipes/${id}`),
   stats:  ()         => api.get('/recipes/stats'),
-  add:    (data)     => api.post('/recipes', data),
+  add:  (data)   => api.post('/recipes/', data),
   update: (id, data) => api.put(`/recipes/${id}`, data),
   delete: (id)       => api.delete(`/recipes/${id}`),
 }
