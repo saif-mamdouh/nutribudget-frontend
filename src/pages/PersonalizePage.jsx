@@ -326,7 +326,7 @@ function RecipeCard({ recipe, onLike, onDislike, onAddToPlan, onWhy, mealType, o
 export default function PersonalizePage() {
   const { user } = useAuthStore()
 
-  const [data,     setData]     = useState(null)
+  const [data, setData] = useState({ recommendations: [], liked_count: 0, method: 'cold_start', message: 'Click Refresh to load your personalized recommendations' })
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
   const [liked,      setLiked]      = useState({})       // {recipe_id: true}
@@ -378,8 +378,8 @@ export default function PersonalizePage() {
     finally { setLoading(false) }
   }, [budget, mealType])
 
-  useEffect(() => { load() }, [])
-
+  useEffect(() => {}, [])
+         
   // ── Interactions ────────────────────────────────────────────────────────────
   const recordInteraction = (recipe, type) =>
     API('/personalize/interact', {
