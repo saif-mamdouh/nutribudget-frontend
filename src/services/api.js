@@ -56,9 +56,9 @@ export const productAPI = {
     fd.append('file', file)
     return api.post('/products/upload-csv', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  // Map 'search' -> 'q' to match backend param name
+  // ← FIX: removed trailing slash (was causing 307 redirect → lost auth token)
   list: ({ search, ...rest } = {}) =>
-    api.get('/products/', { params: { ...(search ? { q: search } : {}), ...rest } }),
+    api.get('/products', { params: { ...(search ? { q: search } : {}), ...rest } }),
   stats:  ()         => api.get('/products/stats'),
   update: (id, data) => api.patch(`/products/${id}`, data),
 }
@@ -81,28 +81,22 @@ export const optimizerAPI = {
   addMeal:        (data)            => api.post('/optimize/add-meal', data),
   weeklyActive:   ()                => api.get('/optimize/weekly/active'),
   swapMeal:       (planId, data)    => api.patch(`/optimize/weekly/${planId}/swap`, data),
-  // Logging — returns { status, id, recipe_name }
   logMeal:        (data)            => api.post('/optimize/log-meal', data),
-  // Unlog by row ID → DELETE /optimize/log-meal/{id}
   unlogMeal:      (logId)           => api.delete(`/optimize/log-meal/${logId}`),
-  // Unlog by fields (legacy fallback)
   unlogMealFields:(data)            => api.delete('/optimize/log-meal', { data }),
-  // Today logs — each entry has { id, recipe_id, meal_type, day_num, ... }
-  todayLogs:        ()              => api.get('/optimize/today-logs'),
-  // Weekly plan history (list of all saved weekly plans)
-  weeklyHistory:    ()              => api.get('/optimize/weekly/history'),
-  // Load a specific weekly plan by ID
-  weeklyById:       (planId)        => api.get(`/optimize/weekly/${planId}`),
+  todayLogs:      ()                => api.get('/optimize/today-logs'),
+  weeklyHistory:  ()                => api.get('/optimize/weekly/history'),
+  weeklyById:     (planId)          => api.get(`/optimize/weekly/${planId}`),
 }
 
 // ── Personalization ───────────────────────────────────────────────────────────
 export const personalizeAPI = {
-  plan:          (data) => api.post('/personalize/plan', data),
-  history:       ()     => api.get('/personalize/history'),
-  feedback:      (data) => api.post('/personalize/feedback', data),
-  recommendations: (p)  => api.get('/personalize/recommendations', { params: p }),
-  interact:      (data) => api.post('/personalize/interact', data),
-  profile:  ()     => api.get('/personalize/profile'),
+  plan:            (data) => api.post('/personalize/plan', data),
+  history:         ()     => api.get('/personalize/history'),
+  feedback:        (data) => api.post('/personalize/feedback', data),
+  recommendations: (p)    => api.get('/personalize/recommendations', { params: p }),
+  interact:        (data) => api.post('/personalize/interact', data),
+  profile:         ()     => api.get('/personalize/profile'),
 }
 
 // ── Vision ────────────────────────────────────────────────────────────────────
@@ -112,7 +106,6 @@ export const visionAPI = {
     fd.append('file', file)
     return api.post('/vision/analyze-meal', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  // Active learning — send user correction to improve model
   correct: (data) => api.post('/vision/correct', data),
 }
 
@@ -120,7 +113,7 @@ export default api
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 export const adminAPI = {
-  stats: () => api.get('/admin/stats'),
+  stats:           ()     => api.get('/admin/stats'),
   uploadProducts:  (file) => { const fd = new FormData(); fd.append('file', file); return api.post('/admin/upload/products',  fd, { headers: { 'Content-Type': 'multipart/form-data' } }) },
   uploadNutrition: (file) => { const fd = new FormData(); fd.append('file', file); return api.post('/admin/upload/nutrition', fd, { headers: { 'Content-Type': 'multipart/form-data' } }) },
   uploadMapping:   (file) => { const fd = new FormData(); fd.append('file', file); return api.post('/admin/upload/mapping',   fd, { headers: { 'Content-Type': 'multipart/form-data' } }) },
@@ -129,12 +122,12 @@ export const adminAPI = {
 
 // ── Recipes ───────────────────────────────────────────────────────────────────
 export const recipeAPI = {
-  list:   (params) => api.get('/recipes/', { params }),
-  get:    (id)     => api.get(`/recipes/${id}`),
-  stats:  ()       => api.get('/recipes/stats'),
-  add:    (data)   => api.post('/recipes/', data),
+  list:   (params)   => api.get('/recipes', { params }),
+  get:    (id)       => api.get(`/recipes/${id}`),
+  stats:  ()         => api.get('/recipes/stats'),
+  add:    (data)     => api.post('/recipes', data),
   update: (id, data) => api.put(`/recipes/${id}`, data),
-  delete: (id)     => api.delete(`/recipes/${id}`),
+  delete: (id)       => api.delete(`/recipes/${id}`),
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
@@ -142,4 +135,18 @@ export const chatAPI = {
   send:         (message) => api.post('/chat', { message }),
   history:      ()        => api.get('/chat/history'),
   clearHistory: ()        => api.delete('/chat/history'),
+}
+
+// ── Profile / NLP ─────────────────────────────────────────────────────────────
+export const profileAPI = {
+  parse:   (text)  => api.post('/profile/parse', { text }),
+  save:    (data)  => api.post('/profile/save', data),
+  get:     ()      => api.get('/profile'),
+  update:  (data)  => api.patch('/profile', data),
+}
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+export const feedbackAPI = {
+  submit: (data) => api.post('/feedback', data),
+  list:   ()     => api.get('/feedback'),
 }
