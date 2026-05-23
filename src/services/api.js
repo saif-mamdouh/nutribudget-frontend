@@ -5,7 +5,8 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000,
+  timeout: 60000,
+  withCredentials: false,  // ← FIX: prevent CORS issues with wildcard origin
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -62,7 +63,6 @@ export const productAPI = {
       .then(res => {
         const d = res.data
         if (!Array.isArray(d) && d?.items) {
-          // Keep total accessible via res.data.total for pagination
           return { ...res, data: d.items, total: d.total }
         }
         return res
