@@ -164,7 +164,7 @@ export default function RecipesPage() {
       limit:     PAGE_SIZE,
       offset:    page * PAGE_SIZE,
     }).then(r => {
-      setRecipes(r.data)
+      setRecipes(Array.isArray(r.data) ? r.data : [])
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [mealType, search, page])
