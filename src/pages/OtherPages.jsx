@@ -740,7 +740,7 @@ function NutritionContent() {
 
   useEffect(() => {
     Promise.all([matchAPI.listNutrition(), matchAPI.stats()]).then(([n, s]) => {
-      setItems(n.data); setStats(s.data)
+     setItems(Array.isArray(n.data) ? n.data : (n.data?.items || n.data?.nutrition || [])); setStats(s.data)
     })
   }, [])
 
