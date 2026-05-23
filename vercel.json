@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://nutribudget-eg.up.railway.app/api/:path*"
+      "source": "/api/v1/:path*",
+      "destination": "https://nutribudget-eg.up.railway.app/api/v1/:path*"
     },
     {
       "source": "/(.*)",
