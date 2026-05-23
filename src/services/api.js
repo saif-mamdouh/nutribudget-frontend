@@ -56,9 +56,17 @@ export const productAPI = {
     fd.append('file', file)
     return api.post('/products/upload-csv', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  // Map 'search' → 'q' to match backend param name
+  // FIX: normalize {items, total} → preserve total for pagination, items for list
   list: ({ search, ...rest } = {}) =>
-    api.get('/products/', { params: { ...(search ? { q: search } : {}), ...rest } }),
+    api.get('/products/', { params: { ...(search ? { q: search } : {}), ...rest } })
+      .then(res => {
+        const d = res.data
+        if (!Array.isArray(d) && d?.items) {
+          // Keep total accessible via res.data.total for pagination
+          return { ...res, data: d.items, total: d.total }
+        }
+        return res
+      }),
   stats:  ()         => api.get('/products/stats'),
   update: (id, data) => api.patch(`/products/${id}`, data),
 }
@@ -122,7 +130,7 @@ export const adminAPI = {
 
 // ── Recipes ───────────────────────────────────────────────────────────────────
 export const recipeAPI = {
-  // ← FIX: backend returns {items, total} but pages expect array → normalize here
+  // FIX: backend returns {items, total} → normalize to array for pages
   list: (params) => api.get('/recipes/', { params }).then(res => {
     const d = res.data
     if (!Array.isArray(d) && d?.items) {
