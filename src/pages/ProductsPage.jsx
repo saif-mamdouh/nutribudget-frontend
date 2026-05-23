@@ -100,22 +100,23 @@ function ProductsContent() {
   const [saveMsg,     setSaveMsg]     = useState('')
 
   // Load products with pagination + search
-  const loadProducts = useCallback(async (pg = 0, q = '') => {
+ const loadProducts = useCallback(async (pg = 0, q = '') => {
     setLoading(true)
     try {
       const params = { limit: PAGE_SIZE, offset: pg * PAGE_SIZE }
       if (q) params.search = q
-      const { data } = await productAPI.list(params)
-      // Support both {items, total} and flat array responses
+      const res = await productAPI.list(params)
+      const data = res.data
+      // api.js normalizes to array + puts total in res.total
       if (Array.isArray(data)) {
         setProducts(data)
-        setTotal(data.length)
+        setTotal(res.total || data.length)
       } else {
-        setProducts(data.items || data)
-        setTotal(data.total || (data.items || data).length)
+        setProducts(data.items || [])
+        setTotal(data.total || 0)
       }
     } finally { setLoading(false) }
-  }, [])
+}, [])
 
   const loadStats = useCallback(async () => {
     const { data } = await productAPI.stats()
