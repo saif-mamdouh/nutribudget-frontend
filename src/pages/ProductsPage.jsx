@@ -106,15 +106,9 @@ function ProductsContent() {
       const params = { limit: PAGE_SIZE, offset: pg * PAGE_SIZE }
       if (q) params.search = q
       const res = await productAPI.list(params)
-      const data = res.data
-      // api.js normalizes to array + puts total in res.total
-      if (Array.isArray(data)) {
-        setProducts(data)
-        setTotal(res.total || data.length)
-      } else {
-        setProducts(data.items || [])
-        setTotal(data.total || 0)
-      }
+      // api.js normalizes: res.data = items array, res.total = total count
+      setProducts(Array.isArray(res.data) ? res.data : [])
+      setTotal(res.total || res.data?.length || 0)
     } finally { setLoading(false) }
 }, [])
 
