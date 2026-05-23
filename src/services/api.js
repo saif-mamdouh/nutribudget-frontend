@@ -56,7 +56,7 @@ export const productAPI = {
     fd.append('file', file)
     return api.post('/products/upload-csv', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
-  // ← FIX: removed trailing slash (was causing 307 redirect → lost auth token)
+  // Map 'search' → 'q' to match backend param name
   list: ({ search, ...rest } = {}) =>
     api.get('/products/', { params: { ...(search ? { q: search } : {}), ...rest } }),
   stats:  ()         => api.get('/products/stats'),
@@ -122,10 +122,17 @@ export const adminAPI = {
 
 // ── Recipes ───────────────────────────────────────────────────────────────────
 export const recipeAPI = {
-  list: (params) => api.get('/recipes/', { params }),
+  // ← FIX: backend returns {items, total} but pages expect array → normalize here
+  list: (params) => api.get('/recipes/', { params }).then(res => {
+    const d = res.data
+    if (!Array.isArray(d) && d?.items) {
+      return { ...res, data: d.items }
+    }
+    return res
+  }),
   get:    (id)       => api.get(`/recipes/${id}`),
   stats:  ()         => api.get('/recipes/stats'),
-  add:  (data)   => api.post('/recipes/', data),
+  add:    (data)     => api.post('/recipes/', data),
   update: (id, data) => api.put(`/recipes/${id}`, data),
   delete: (id)       => api.delete(`/recipes/${id}`),
 }
@@ -139,10 +146,10 @@ export const chatAPI = {
 
 // ── Profile / NLP ─────────────────────────────────────────────────────────────
 export const profileAPI = {
-  parse:   (text)  => api.post('/profile/parse', { text }),
-  save:    (data)  => api.post('/profile/save', data),
-  get:     ()      => api.get('/profile'),
-  update:  (data)  => api.patch('/profile', data),
+  parse:  (text) => api.post('/profile/parse', { text }),
+  save:   (data) => api.post('/profile/save', data),
+  get:    ()     => api.get('/profile'),
+  update: (data) => api.patch('/profile', data),
 }
 
 // ── Feedback ──────────────────────────────────────────────────────────────────
