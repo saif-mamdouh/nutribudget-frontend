@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, X, Zap, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, BookmarkPlus } from 'lucide-react'
+import { Upload, X, Zap, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, BookmarkPlus, Camera, History, GitCompare } from 'lucide-react'
 import { visionAPI, optimizerAPI } from '../services/api'
 import { MacroBar, Badge, Spinner, SectionHeader } from '../components/UI'
 import { useAuthStore } from '../store/authStore'
@@ -61,6 +61,14 @@ function MacroFitGauge({ score }) {
   )
 }
 
+// ── Portion visual guide ──────────────────────────────────────────────────────
+const PORTION_VISUALS = {
+  0.5: { emoji: '🤏', desc: 'نص طبق', example: 'زي كوباية صغيرة' },
+  1:   { emoji: '🍽️', desc: 'طبق عادي', example: 'حجم طبق عادي' },
+  1.5: { emoji: '🫃', desc: 'طبق كبير', example: 'طبق ونص تقريباً' },
+  2:   { emoji: '😮', desc: 'طبقين', example: 'حجم وجبة كبيرة جداً' },
+}
+
 // ── Dynamic macro fit ─────────────────────────────────────────────────────────
 function calcMacroFit(scaled, user) {
   if (!scaled || !user) return null
@@ -96,13 +104,11 @@ function calcMacroFit(scaled, user) {
 
 // ── Meal type options ─────────────────────────────────────────────────────────
 const MEAL_TYPES = [
-  { v: 'فطار',  label: 'فطار'  },
-  { v: 'غداء',  label: 'غداء'  },
-  { v: 'عشاء',  label: 'عشاء'  },
-  { v: 'سناك',  label: 'سناك'  },
+  { v: 'فطار', label: 'فطار' },
+  { v: 'غداء', label: 'غداء' },
+  { v: 'عشاء', label: 'عشاء' },
+  { v: 'سناك', label: 'سناك' },
 ]
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 
 // ── Active Learning Stats Widget ─────────────────────────────────────────────
 function ALStatsWidget() {
@@ -131,24 +137,19 @@ function ALStatsWidget() {
           {loading ? '⏳' : open ? '▲' : '▼'}
         </span>
       </button>
-
       {open && stats && (
         <div className="mt-3 space-y-3">
-          {/* Summary cards */}
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: 'إجمالي التصحيحات', value: stats.total_corrections, color: '#2D7A4F' },
               { label: 'تصحيحاتك', value: stats.user_corrections, color: '#3b82f6' },
             ].map(s => (
-              <div key={s.label} className="p-2.5 rounded-xl text-center"
-                   style={{background: s.color+'15'}}>
+              <div key={s.label} className="p-2.5 rounded-xl text-center" style={{background: s.color+'15'}}>
                 <p className="text-xl font-bold font-mono" style={{color: s.color}}>{s.value}</p>
                 <p className="text-[10px] mt-0.5" style={{color:'var(--text-muted)'}}>{s.label}</p>
               </div>
             ))}
           </div>
-
-          {/* Status */}
           <div className="flex items-center gap-2 p-2 rounded-xl"
                style={{background: stats.learning_status==='active' ? '#2D7A4F15' : '#f9741615'}}>
             <span className="text-sm">{stats.learning_status === 'active' ? '✅' : '🔄'}</span>
@@ -158,8 +159,6 @@ function ALStatsWidget() {
                 : 'جاري جمع البيانات لبدء التحسين التلقائي'}
             </p>
           </div>
-
-          {/* Top corrections */}
           {stats.top_corrections?.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5"
@@ -168,26 +167,18 @@ function ALStatsWidget() {
                 {stats.top_corrections.slice(0, 5).map((c, i) => (
                   <div key={i} className="flex items-center justify-between text-xs">
                     <span style={{color:'var(--text-muted)'}}>
-                      <span style={{color:'#ef4444'}}>{c.from}</span>
-                      {' → '}
+                      <span style={{color:'#ef4444'}}>{c.from}</span>{' → '}
                       <span style={{color:'#2D7A4F'}}>{c.to}</span>
                     </span>
-                    <span className="font-mono font-bold" style={{color:'var(--primary)'}}>
-                      ×{c.count}
-                    </span>
+                    <span className="font-mono font-bold" style={{color:'var(--primary)'}}>×{c.count}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Boosted classes */}
           {stats.boosted_classes?.length > 0 && (
-            <div className="p-2 rounded-xl"
-                 style={{background:'#2D7A4F10', border:'1px solid #2D7A4F30'}}>
-              <p className="text-[10px] font-semibold mb-1" style={{color:'#2D7A4F'}}>
-                🚀 تحسين تلقائي مفعّل
-              </p>
+            <div className="p-2 rounded-xl" style={{background:'#2D7A4F10', border:'1px solid #2D7A4F30'}}>
+              <p className="text-[10px] font-semibold mb-1" style={{color:'#2D7A4F'}}>🚀 تحسين تلقائي مفعّل</p>
               {stats.boosted_classes.map((b, i) => (
                 <p key={i} className="text-[10px]" style={{color:'var(--text-muted)'}}>
                   {b.from} → {b.to} ({b.count} corrections)
@@ -195,7 +186,6 @@ function ALStatsWidget() {
               ))}
             </div>
           )}
-
           <p className="text-[9px] text-center" style={{color:'var(--text-muted)'}}>
             {stats.model_version} · التصحيحات تُستخدم لتحسين دقة الـ YOLOv8
           </p>
@@ -205,37 +195,198 @@ function ALStatsWidget() {
   )
 }
 
+// ── History Quick-Reuse Panel ─────────────────────────────────────────────────
+function HistoryPanel({ onReuse }) {
+  const [history, setHistory] = useState([])
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const load = () => {
+      try {
+        const h = JSON.parse(localStorage.getItem('analyzed_meals') || '[]')
+        setHistory(h.slice(0, 10))
+      } catch {}
+    }
+    load()
+    window.addEventListener('analyzed-meals-updated', load)
+    return () => window.removeEventListener('analyzed-meals-updated', load)
+  }, [])
+
+  if (history.length === 0) return null
+
+  return (
+    <div className="card" style={{borderColor:'var(--border)'}}>
+      <button onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between">
+        <span className="text-sm font-semibold flex items-center gap-2" style={{color:'var(--text)'}}>
+          <History className="w-4 h-4" style={{color:'var(--primary)'}}/>
+          وجبات محللة قبل كده ({history.length})
+        </span>
+        {open
+          ? <ChevronUp className="w-4 h-4" style={{color:'var(--text-muted)'}}/>
+          : <ChevronDown className="w-4 h-4" style={{color:'var(--text-muted)'}}/>}
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          {history.map(entry => (
+            <div key={entry.id}
+              className="flex items-center justify-between py-2 px-3 rounded-xl"
+              style={{background:'var(--primary-lt)'}}>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate" style={{color:'var(--text)'}}>{entry.meal_name}</p>
+                <p className="text-[10px]" style={{color:'var(--text-muted)'}}>
+                  {entry.calories} kcal · {entry.cost_egp?.toFixed(1)} EGP ·{' '}
+                  {new Date(entry.analyzed_at).toLocaleDateString('ar-EG', {month:'short', day:'numeric'})}
+                </p>
+              </div>
+              <button
+                onClick={() => onReuse(entry)}
+                className="text-[10px] px-2.5 py-1 rounded-lg font-bold shrink-0 ml-2 transition-all"
+                style={{background:'var(--primary)', color:'#fff'}}>
+                + أضف
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Compare Panel ─────────────────────────────────────────────────────────────
+function CompareMeals({ mealA, mealB, portionA, portionB }) {
+  if (!mealA || !mealB) return null
+
+  const macros = [
+    { key: 'cal',  label: 'سعرات',  unit: 'kcal', color: '#f97316',
+      a: (mealA.estimated_macros?.calories  || 0) * portionA,
+      b: (mealB.estimated_macros?.calories  || 0) * portionB },
+    { key: 'prot', label: 'بروتين', unit: 'g',    color: '#3b82f6',
+      a: (mealA.estimated_macros?.protein_g || 0) * portionA,
+      b: (mealB.estimated_macros?.protein_g || 0) * portionB },
+    { key: 'carb', label: 'كارب',   unit: 'g',    color: '#f59e0b',
+      a: (mealA.estimated_macros?.carbs_g   || 0) * portionA,
+      b: (mealB.estimated_macros?.carbs_g   || 0) * portionB },
+    { key: 'fat',  label: 'دهون',   unit: 'g',    color: '#a855f7',
+      a: (mealA.estimated_macros?.fats_g    || 0) * portionA,
+      b: (mealB.estimated_macros?.fats_g    || 0) * portionB },
+  ]
+
+  return (
+    <div className="card">
+      <p className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
+         style={{color:'var(--text-muted)'}}>
+        <GitCompare className="w-3.5 h-3.5"/> مقارنة الوجبتين
+      </p>
+      {/* Meal names */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {[mealA, mealB].map((m, i) => (
+          <div key={i} className="text-center py-1.5 px-2 rounded-xl"
+               style={{background: i === 0 ? 'rgba(77,184,122,0.12)' : 'rgba(59,130,246,0.12)'}}>
+            <p className="text-xs font-bold truncate"
+               style={{color: i === 0 ? '#4DB87A' : '#3b82f6'}}>{m.meal_name}</p>
+          </div>
+        ))}
+      </div>
+      {/* Macro rows */}
+      {macros.map(({label, unit, color, a, b}) => {
+        const max = Math.max(a, b, 1)
+        const winner = a < b ? 'a' : b < a ? 'b' : 'tie'
+        return (
+          <div key={label} className="mb-2">
+            <div className="flex justify-between text-[10px] mb-1" style={{color:'var(--text-muted)'}}>
+              <span>{label}</span>
+              <span>{unit}</span>
+            </div>
+            <div className="flex gap-1 items-center">
+              {/* A bar */}
+              <div className="flex-1 flex justify-end">
+                <div className="h-3 rounded-full transition-all"
+                     style={{width:`${pct(a,max)}%`, background:'rgba(77,184,122,0.6)',
+                             minWidth: a > 0 ? 4 : 0}}/>
+              </div>
+              {/* Values */}
+              <div className="flex gap-1 text-[9px] font-bold w-24 justify-center shrink-0">
+                <span style={{color: winner==='a' ? '#4DB87A' : 'var(--text-muted)'}}>{a.toFixed(0)}</span>
+                <span style={{color:'var(--text-muted)'}}>vs</span>
+                <span style={{color: winner==='b' ? '#3b82f6' : 'var(--text-muted)'}}>{b.toFixed(0)}</span>
+              </div>
+              {/* B bar */}
+              <div className="flex-1">
+                <div className="h-3 rounded-full transition-all"
+                     style={{width:`${pct(b,max)}%`, background:'rgba(59,130,246,0.6)',
+                             minWidth: b > 0 ? 4 : 0}}/>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      {/* Cost compare */}
+      <div className="flex justify-between items-center mt-3 pt-2 border-t"
+           style={{borderColor:'var(--border)'}}>
+        <span className="text-xs font-bold" style={{color:'#4DB87A'}}>
+          {(mealA.estimated_cost_egp * portionA).toFixed(1)} EGP
+        </span>
+        <span className="text-[10px]" style={{color:'var(--text-muted)'}}>التكلفة</span>
+        <span className="text-xs font-bold" style={{color:'#3b82f6'}}>
+          {(mealB.estimated_cost_egp * portionB).toFixed(1)} EGP
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function VisionPage() {
   const { user } = useAuthStore()
 
-  const [file,       setFile]       = useState(null)
-  const [preview,    setPreview]    = useState(null)
-  const [result,     setResult]     = useState(null)
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState(null)
-  const [showIngr,   setShowIngr]   = useState(false)
-  const [portion,    setPortion]    = useState(1)
-  const [correcting, setCorrecting] = useState(false)
+  const [file,         setFile]         = useState(null)
+  const [preview,      setPreview]      = useState(null)
+  const [result,       setResult]       = useState(null)
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState(null)
+  const [showIngr,     setShowIngr]     = useState(false)
+  const [portion,      setPortion]      = useState(1)
+  const [correcting,   setCorrecting]   = useState(false)
   const [corrected,    setCorrected]    = useState(false)
-  const [showCorrect,  setShowCorrect]  = useState(false)  // show correction input
-  const [correctInput, setCorrectInput] = useState('')     // user typed correction
+  const [showCorrect,  setShowCorrect]  = useState(false)
+  const [correctInput, setCorrectInput] = useState('')
+
+  // ── Compare mode ──────────────────────────────────────────────────────────
+  const [compareMode,   setCompareMode]   = useState(false)
+  const [resultA,       setResultA]       = useState(null)
+  const [portionA,      setPortionA]      = useState(1)
+  const [resultB,       setResultB]       = useState(null)
+  const [portionB,      setPortionB]      = useState(1)
+  const [compareSlot,   setCompareSlot]   = useState('a') // which slot we're filling
 
   // ── Add to Log state ──────────────────────────────────────────────────────
-  const [logging,    setLogging]    = useState(false)
-  const [logged,      setLogged]      = useState(false)
-  const [logError,    setLogError]    = useState(null)
-  const [dbCost,      setDbCost]      = useState(null)
-  const [costLoading, setCostLoading] = useState(false)
-  const [mealType,   setMealType]   = useState('غداء')
+  const [logging,      setLogging]      = useState(false)
+  const [logged,       setLogged]       = useState(false)
+  const [logError,     setLogError]     = useState(null)
+  const [dbCost,       setDbCost]       = useState(null)
+  const [costLoading,  setCostLoading]  = useState(false)
+  const [mealType,     setMealType]     = useState('غداء')
 
-  const imageRef = useRef(null)
+  // ── History reuse log state ───────────────────────────────────────────────
+  const [reuseLogging, setReuseLogging] = useState(false)
+  const [reuseLogged,  setReuseLogged]  = useState(null) // entry id that was logged
+
+  const cameraRef = useRef(null)
+  const imageRef  = useRef(null)
+
+  const resetState = () => {
+    setResult(null); setError(null); setPortion(1)
+    setCorrected(false); setLogged(false); setLogError(null)
+    setShowCorrect(false); setCorrectInput(''); setDbCost(null)
+  }
 
   const onDrop = useCallback(accepted => {
     const f = accepted[0]
     if (!f) return
     setFile(f); setPreview(URL.createObjectURL(f))
-    setResult(null); setError(null); setPortion(1)
-    setCorrected(false); setLogged(false); setLogError(null)
+    resetState()
   }, [])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -244,10 +395,18 @@ export default function VisionPage() {
     maxFiles: 1,
   })
 
+  // ── Camera capture (mobile) ───────────────────────────────────────────────
+  const handleCameraCapture = (e) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setFile(f); setPreview(URL.createObjectURL(f))
+    resetState()
+  }
+
   const clearFile = e => {
-    e.stopPropagation()
-    setFile(null); setPreview(null); setResult(null); setError(null)
-    setLogged(false); setLogError(null)
+    if (e) e.stopPropagation()
+    setFile(null); setPreview(null)
+    resetState()
   }
 
   const analyze = async () => {
@@ -257,7 +416,14 @@ export default function VisionPage() {
       const { data } = await visionAPI.analyze(file)
       setResult(data); setShowIngr(false); setPortion(1); setDbCost(null)
       setShowCorrect(false); setCorrectInput('')
-      // Save to analyzed meals history in localStorage
+
+      // If in compare mode, store in the right slot
+      if (compareMode) {
+        if (compareSlot === 'a') { setResultA(data); setPortionA(1); setCompareSlot('b') }
+        else                     { setResultB(data); setPortionB(1) }
+      }
+
+      // Save to analyzed meals history
       try {
         const prev = JSON.parse(localStorage.getItem('analyzed_meals') || '[]')
         const entry = {
@@ -275,23 +441,20 @@ export default function VisionPage() {
         window.dispatchEvent(new CustomEvent('analyzed-meals-updated'))
       } catch {}
 
-      // Fetch accurate cost from DB using meal_search
+      // Fetch accurate cost from DB
       if (data?.meal_name) {
         setCostLoading(true)
         try {
           const token = localStorage.getItem('access_token')
           const res = await fetch('/api/v1/optimize/meal-search', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json',
-                       Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ query: data.meal_name, top_k: 1 }),
           })
           if (res.ok) {
             const searchData = await res.json()
             const firstMatch = searchData?.results?.[0] || searchData?.[0]
-            if (firstMatch?.total_cost_egp) {
-              setDbCost(parseFloat(firstMatch.total_cost_egp.toFixed(1)))
-            }
+            if (firstMatch?.total_cost_egp) setDbCost(parseFloat(firstMatch.total_cost_egp.toFixed(1)))
           }
         } catch {}
         setCostLoading(false)
@@ -306,35 +469,27 @@ export default function VisionPage() {
     if (!result || !file) return
     setCorrecting(true)
     try {
-      // Await FileReader properly (old code had async bug)
       const b64 = await new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload  = () => resolve(reader.result.split(',')[1].substring(0, 500))
         reader.onerror = () => reject(new Error('FileReader failed'))
         reader.readAsDataURL(file)
       })
-
-      // Use English class_name from top3[0] so boost query matches YOLO output
-      // (result.meal_name is Arabic — won't match DB queries)
       const predictedEnglish = result.top3?.[0]?.class_name || result.meal_name
-
       await visionAPI.correct({
-        predicted_class: predictedEnglish,   // ← English: "pizza" ✅ matches YOLO
-        correct_class:   correctClass,        // ← English: "shawarma" ✅
+        predicted_class: predictedEnglish,
+        correct_class:   correctClass,
         confidence:      result.confidence,
         image_base64:    b64,
       })
       setCorrected(true)
     } catch(e) {
       console.warn('Correction failed:', e?.message)
-      // Still mark as corrected visually — backend correction is non-critical
       setCorrected(true)
-    } finally {
-      setCorrecting(false)
-    }
+    } finally { setCorrecting(false) }
   }
 
-  // ── Add to Today's Log + History ─────────────────────────────────────────
+  // ── Add to Today's Log ────────────────────────────────────────────────────
   const addToLog = async () => {
     if (!result) return
     setLogging(true); setLogError(null)
@@ -348,30 +503,50 @@ export default function VisionPage() {
         fats_g:      parseFloat((scaled?.fat  || 0).toFixed(1)),
         cost_egp:    parseFloat((scaled?.cost || 0).toFixed(2)),
       }
-
-      // 1. Save to meal_plans FIRST → get plan_id for linking
       const authH = { 'Content-Type':'application/json',
         Authorization:`Bearer ${localStorage.getItem('access_token')}` }
       let planId = null
       try {
         const planRes = await fetch('/api/v1/optimize/add-meal', {
-          method: 'POST', headers: authH,
-          body: JSON.stringify(mealData),
+          method: 'POST', headers: authH, body: JSON.stringify(mealData),
         }).then(r => r.ok ? r.json() : null)
         planId = planRes?.plan_id || null
       } catch {}
-
-      // 2. Log to meal_logs WITH plan_id → delete from History also clears Daily Goals
-      await optimizerAPI.logMeal({
-        ...mealData,
-        source:  'vision',
-        plan_id: planId,   // ← link so delete cleans up both tables
-      })
-
+      await optimizerAPI.logMeal({ ...mealData, source: 'vision', plan_id: planId })
       setLogged(true)
     } catch (e) {
       setLogError(e.response?.data?.detail || 'فشل الحفظ. جرب تاني.')
     } finally { setLogging(false) }
+  }
+
+  // ── History quick reuse ───────────────────────────────────────────────────
+  const reuseFromHistory = async (entry) => {
+    setReuseLogging(true)
+    try {
+      const authH = { 'Content-Type':'application/json',
+        Authorization:`Bearer ${localStorage.getItem('access_token')}` }
+      const mealData = {
+        recipe_name: entry.meal_name,
+        meal_type:   mealType,
+        calories:    Math.round(entry.calories),
+        protein_g:   parseFloat((entry.protein_g || 0).toFixed(1)),
+        carbs_g:     parseFloat((entry.carbs_g   || 0).toFixed(1)),
+        fats_g:      parseFloat((entry.fats_g    || 0).toFixed(1)),
+        cost_egp:    parseFloat((entry.cost_egp  || 0).toFixed(2)),
+      }
+      let planId = null
+      try {
+        const planRes = await fetch('/api/v1/optimize/add-meal', {
+          method: 'POST', headers: authH, body: JSON.stringify(mealData),
+        }).then(r => r.ok ? r.json() : null)
+        planId = planRes?.plan_id || null
+      } catch {}
+      await optimizerAPI.logMeal({ ...mealData, source: 'vision_history', plan_id: planId })
+      setReuseLogged(entry.id)
+      setTimeout(() => setReuseLogged(null), 3000)
+    } catch (e) {
+      console.warn('Reuse log failed:', e?.message)
+    } finally { setReuseLogging(false) }
   }
 
   // ── Scaled macros ─────────────────────────────────────────────────────────
@@ -402,10 +577,33 @@ export default function VisionPage() {
         subtitle="YOLOv8 AI + Nutrition DB — identify food & estimate macros"
       />
 
+      {/* ── Compare mode toggle ── */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => {
+            setCompareMode(m => !m)
+            setResultA(null); setResultB(null); setCompareSlot('a')
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+          style={compareMode
+            ? {background:'var(--primary)', color:'#fff'}
+            : {background:'var(--primary-lt)', color:'var(--primary)', border:'1px solid var(--border)'}}>
+          <GitCompare className="w-4 h-4"/>
+          {compareMode ? 'إلغاء المقارنة' : 'قارن وجبتين'}
+        </button>
+        {compareMode && (
+          <span className="text-xs" style={{color:'var(--text-muted)'}}>
+            {!resultA ? '📸 حلل الوجبة الأولى' : !resultB ? '📸 حلل الوجبة التانية' : '✅ جاهز للمقارنة'}
+          </span>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* ── Left: Upload ── */}
         <div className="space-y-4">
+
+          {/* Dropzone */}
           <div {...getRootProps()} className={`card relative cursor-pointer border-2 border-dashed transition-all
               ${isDragActive ? 'border-[var(--primary)] bg-[var(--primary-lt)]' : 'hover:border-[var(--primary)]'}`}
                style={{minHeight:240, display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -436,12 +634,33 @@ export default function VisionPage() {
             )}
           </div>
 
-          <button onClick={analyze} disabled={!file || loading}
-            className="btn-primary w-full flex items-center justify-center gap-2 py-3"
-            style={{opacity: (!file || loading) ? 0.5 : 1}}>
-            {loading ? <Spinner size="sm"/> : <Zap className="w-5 h-5"/>}
-            {loading ? 'جاري التحليل...' : 'تحليل الوجبة'}
-          </button>
+          {/* Action buttons row */}
+          <div className="flex gap-2">
+            {/* Analyze */}
+            <button onClick={analyze} disabled={!file || loading}
+              className="btn-primary flex-1 flex items-center justify-center gap-2 py-3"
+              style={{opacity: (!file || loading) ? 0.5 : 1}}>
+              {loading ? <Spinner size="sm"/> : <Zap className="w-5 h-5"/>}
+              {loading ? 'جاري التحليل...' : 'تحليل الوجبة'}
+            </button>
+
+            {/* Camera capture (mobile-friendly) */}
+            <label
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold cursor-pointer transition-all"
+              style={{background:'var(--primary-lt)', color:'var(--primary)',
+                      border:'1px solid var(--border)'}}>
+              <Camera className="w-5 h-5"/>
+              <span className="hidden sm:inline">كاميرا</span>
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleCameraCapture}
+              />
+            </label>
+          </div>
 
           {error && (
             <div className="card border-red-500/30 bg-red-50/10 text-red-400 text-sm p-3 rounded-xl">
@@ -449,6 +668,7 @@ export default function VisionPage() {
             </div>
           )}
 
+          {/* How it works */}
           {!result && !loading && (
             <div className="card">
               <p className="text-xs font-semibold uppercase tracking-wide mb-3"
@@ -467,6 +687,16 @@ export default function VisionPage() {
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+
+          {/* History panel */}
+          <HistoryPanel onReuse={reuseFromHistory} />
+          {reuseLogged && (
+            <div className="flex items-center gap-2 p-3 rounded-xl text-sm font-semibold"
+                 style={{background:'rgba(77,184,122,0.10)', color:'#4DB87A',
+                         border:'1px solid rgba(77,184,122,0.25)'}}>
+              <CheckCircle2 className="w-4 h-4"/> اتضافت للسجل ✅
             </div>
           )}
         </div>
@@ -529,7 +759,6 @@ export default function VisionPage() {
             {result.confidence < 0.70 && (
               <div className="p-4 rounded-2xl space-y-3"
                    style={{background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)'}}>
-                {/* Header */}
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{color:'#f59e0b'}}/>
                   <div>
@@ -541,12 +770,10 @@ export default function VisionPage() {
                     </p>
                   </div>
                 </div>
-
-                {/* Tips */}
-                <div className="rounded-xl p-3 space-y-1.5"
-                     style={{background:'rgba(245,158,11,0.08)'}}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2"
-                     style={{color:'#f59e0b'}}>نصايح للصورة الجاية</p>
+                <div className="rounded-xl p-3 space-y-1.5" style={{background:'rgba(245,158,11,0.08)'}}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{color:'#f59e0b'}}>
+                    نصايح للصورة الجاية
+                  </p>
                   {[
                     { icon: '📸', text: 'صوّر الأكل من فوق مباشرة (top-down)' },
                     { icon: '💡', text: 'تأكد الإضاءة كويسة ومفيش ضل' },
@@ -559,15 +786,11 @@ export default function VisionPage() {
                     </div>
                   ))}
                 </div>
-
-                {/* Retry button */}
-                <button
-                  onClick={clearFile}
+                <button onClick={() => clearFile(null)}
                   className="w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
                   style={{background:'rgba(245,158,11,0.15)', color:'#f59e0b',
                           border:'1px solid rgba(245,158,11,0.3)'}}>
-                  <RotateCcw className="w-3.5 h-3.5"/>
-                  ابعت صورة تانية
+                  <RotateCcw className="w-3.5 h-3.5"/> ابعت صورة تانية
                 </button>
               </div>
             )}
@@ -614,12 +837,12 @@ export default function VisionPage() {
                     {label:'Protein',  pct: dynamicMacroFit.protein_pct},
                     {label:'Carbs',    pct: dynamicMacroFit.carbs_pct},
                     {label:'Budget',   pct: dynamicMacroFit.budget_pct},
-                  ].map(({label, pct}) => {
-                    const color = pct >= 80 ? '#ef4444' : pct >= 60 ? '#f59e0b' : '#4DB87A'
+                  ].map(({label, pct: p}) => {
+                    const color = p >= 80 ? '#ef4444' : p >= 60 ? '#f59e0b' : '#4DB87A'
                     return (
                       <div key={label} className="text-center p-2 rounded-xl"
                            style={{background:'var(--primary-lt)'}}>
-                        <p className="text-xs font-bold" style={{color}}>{pct?.toFixed(0)}%</p>
+                        <p className="text-xs font-bold" style={{color}}>{p?.toFixed(0)}%</p>
                         <p className="text-[9px]" style={{color:'var(--text-muted)'}}>{label}</p>
                       </div>
                     )
@@ -628,21 +851,30 @@ export default function VisionPage() {
               </div>
             )}
 
-            {/* ── Portion Sizing ── */}
+            {/* ── Portion Sizing with visual guide ── */}
             <div className="card">
               <p className="text-xs font-semibold uppercase tracking-wide mb-2"
                  style={{color:'var(--text-muted)'}}>Portion Size</p>
               <div className="flex gap-2 mb-3">
-                {PORTIONS.map(({v, label}) => (
-                  <button key={v} onClick={() => setPortion(v)}
-                    className="flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                    style={portion === v
-                      ? {background:'var(--primary)', color:'#fff'}
-                      : {background:'var(--primary-lt)', color:'var(--text-muted)'}}>
-                    {label}
-                  </button>
-                ))}
+                {PORTIONS.map(({v, label}) => {
+                  const visual = PORTION_VISUALS[v]
+                  const active = portion === v
+                  return (
+                    <button key={v} onClick={() => setPortion(v)}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex flex-col items-center gap-0.5"
+                      style={active
+                        ? {background:'var(--primary)', color:'#fff'}
+                        : {background:'var(--primary-lt)', color:'var(--text-muted)'}}>
+                      <span className="text-base leading-none">{visual.emoji}</span>
+                      <span>{label}</span>
+                    </button>
+                  )
+                })}
               </div>
+              {/* Visual portion hint */}
+              <p className="text-[10px] mb-3 text-center" style={{color:'var(--text-muted)'}}>
+                {PORTION_VISUALS[portion]?.desc} — {PORTION_VISUALS[portion]?.example}
+              </p>
               <div className="grid grid-cols-4 gap-2">
                 {[
                   {label:'Cal',     val:scaled?.cal,  unit:'kcal', color:'#f97316'},
@@ -671,10 +903,7 @@ export default function VisionPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-lg font-black" style={{color:'var(--primary)'}}>
-                    {dbCost
-                      ? (dbCost * portion).toFixed(1)
-                      : scaled?.cost?.toFixed(1)
-                    } EGP
+                    {dbCost ? (dbCost * portion).toFixed(1) : scaled?.cost?.toFixed(1)} EGP
                     {portion !== 1 && (
                       <span className="text-xs font-normal ml-1" style={{color:'var(--text-muted)'}}>
                         (×{portion})
@@ -682,20 +911,45 @@ export default function VisionPage() {
                     )}
                   </span>
                   {dbCost && (
-                    <p className="text-[10px]" style={{color:'var(--primary)'}}>
-                      ✓ من قاعدة البيانات
-                    </p>
+                    <p className="text-[10px]" style={{color:'var(--primary)'}}>✓ من قاعدة البيانات</p>
                   )}
                 </div>
               </div>
             </div>
 
+            {/* ── Compare — save to slot ── */}
+            {compareMode && (
+              <div className="card" style={{border:'1px solid rgba(59,130,246,0.3)', background:'rgba(59,130,246,0.05)'}}>
+                <p className="text-xs font-semibold mb-2" style={{color:'#3b82f6'}}>
+                  {!resultA ? '➕ حفظ كـ وجبة أولى'
+                   : !resultB ? '➕ حفظ كـ وجبة تانية'
+                   : '✅ الوجبتين اتحفظوا'}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setResultA(result); setPortionA(portion) }}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                    style={resultA?.meal_name === result.meal_name
+                      ? {background:'rgba(77,184,122,0.2)', color:'#4DB87A', border:'1px solid #4DB87A33'}
+                      : {background:'var(--primary-lt)', color:'var(--primary)'}}>
+                    {resultA ? '✅ ' + resultA.meal_name.slice(0,12) : 'وجبة أولى'}
+                  </button>
+                  <button
+                    onClick={() => { setResultB(result); setPortionB(portion) }}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                    style={resultB?.meal_name === result.meal_name
+                      ? {background:'rgba(59,130,246,0.2)', color:'#3b82f6', border:'1px solid #3b82f633'}
+                      : {background:'var(--primary-lt)', color:'var(--primary)'}}>
+                    {resultB ? '✅ ' + resultB.meal_name.slice(0,12) : 'وجبة تانية'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── Add to Today's Log ── */}
             <div className="card" style={{borderColor:'var(--border)'}}>
               <p className="text-xs font-semibold uppercase tracking-wide mb-2"
                  style={{color:'var(--text-muted)'}}>إضافة لسجل اليوم</p>
-
-              {/* Meal type selector */}
               <div className="flex gap-2 mb-3">
                 {MEAL_TYPES.map(({v, label}) => (
                   <button key={v} onClick={() => setMealType(v)}
@@ -707,12 +961,8 @@ export default function VisionPage() {
                   </button>
                 ))}
               </div>
-
-              {/* Log button */}
               {!logged ? (
-                <button
-                  onClick={addToLog}
-                  disabled={logging}
+                <button onClick={addToLog} disabled={logging}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
                   style={{
                     background: logging ? 'var(--primary-lt)' : 'var(--primary)',
@@ -727,11 +977,9 @@ export default function VisionPage() {
               ) : (
                 <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
                      style={{background:'rgba(77,184,122,0.10)', color:'#4DB87A'}}>
-                  <CheckCircle2 className="w-4 h-4"/>
-                  اتحفظت في سجل اليوم ✅
+                  <CheckCircle2 className="w-4 h-4"/> اتحفظت في سجل اليوم ✅
                 </div>
               )}
-
               {logError && (
                 <p className="text-xs mt-2 text-center" style={{color:'#ef4444'}}>{logError}</p>
               )}
@@ -770,27 +1018,22 @@ export default function VisionPage() {
               </div>
             )}
 
-            {/* ── Active Learning — New UX ── */}
+            {/* ── Active Learning ── */}
             {!corrected && (
               <div className="card" style={{borderColor:'var(--border)'}}>
                 {!showCorrect ? (
-                  /* Step 1: Is the result correct? */
                   <div>
-                    <p className="text-sm font-semibold mb-3 flex items-center gap-2"
-                       style={{color:'var(--text)'}}>
-                      <span>🧠</span>
-                      النتيجة صح؟
+                    <p className="text-sm font-semibold mb-3 flex items-center gap-2" style={{color:'var(--text)'}}>
+                      <span>🧠</span> النتيجة صح؟
                     </p>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => { setCorrected(true) }}
+                      <button onClick={() => setCorrected(true)}
                         className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                         style={{background:'rgba(77,184,122,0.12)', color:'#4DB87A',
                                 border:'1px solid rgba(77,184,122,0.25)'}}>
                         <CheckCircle2 className="w-4 h-4"/> آه، صح
                       </button>
-                      <button
-                        onClick={() => setShowCorrect(true)}
+                      <button onClick={() => setShowCorrect(true)}
                         className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                         style={{background:'rgba(239,68,68,0.08)', color:'#ef4444',
                                 border:'1px solid rgba(239,68,68,0.2)'}}>
@@ -799,22 +1042,14 @@ export default function VisionPage() {
                     </div>
                   </div>
                 ) : (
-                  /* Step 2: What is the correct meal? */
                   <div>
-                    <p className="text-sm font-semibold mb-3 flex items-center gap-2"
-                       style={{color:'var(--text)'}}>
-                      <RotateCcw className="w-4 h-4" style={{color:'var(--primary)'}}/>
-                      إيه الوجبة الصح؟
+                    <p className="text-sm font-semibold mb-3 flex items-center gap-2" style={{color:'var(--text)'}}>
+                      <RotateCcw className="w-4 h-4" style={{color:'var(--primary)'}}/> إيه الوجبة الصح؟
                     </p>
-
-                    {/* Quick suggestions from top3 */}
                     {result.top3?.length > 1 && (
                       <div className="flex flex-wrap gap-2 mb-3">
                         {result.top3.slice(1).map((p, i) => (
-                          <button key={i}
-                            onClick={() => {
-                              sendCorrection(p.class_name)
-                            }}
+                          <button key={i} onClick={() => sendCorrection(p.class_name)}
                             disabled={correcting}
                             className="text-xs px-3 py-1.5 rounded-xl font-medium transition-all"
                             style={{background:'var(--primary-lt)', color:'var(--primary)'}}>
@@ -823,30 +1058,21 @@ export default function VisionPage() {
                         ))}
                       </div>
                     )}
-
-                    {/* Manual input */}
                     <div className="flex gap-2">
-                      <input
-                        className="input flex-1 text-sm"
+                      <input className="input flex-1 text-sm"
                         placeholder="اكتب اسم الوجبة بالإنجليزي..."
                         value={correctInput}
                         onChange={e => setCorrectInput(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && correctInput.trim()) {
-                            sendCorrection(correctInput.trim())
-                          }
-                        }}
+                        onKeyDown={e => { if (e.key === 'Enter' && correctInput.trim()) sendCorrection(correctInput.trim()) }}
                       />
-                      <button
-                        onClick={() => correctInput.trim() && sendCorrection(correctInput.trim())}
+                      <button onClick={() => correctInput.trim() && sendCorrection(correctInput.trim())}
                         disabled={correcting || !correctInput.trim()}
                         className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
                         style={{background:'var(--primary)'}}>
                         {correcting ? '⏳' : 'إرسال'}
                       </button>
                     </div>
-                    <button onClick={() => setShowCorrect(false)}
-                      className="text-xs mt-2" style={{color:'var(--text-muted)'}}>
+                    <button onClick={() => setShowCorrect(false)} className="text-xs mt-2" style={{color:'var(--text-muted)'}}>
                       ← رجوع
                     </button>
                   </div>
@@ -854,28 +1080,29 @@ export default function VisionPage() {
               </div>
             )}
 
-            {/* Active Learning Stats — admin/debug only, hidden by default */}
             {false && <ALStatsWidget />}
 
             {corrected && (
               <div className="card flex items-center justify-between gap-2"
-                   style={{color:'#4DB87A', background:'rgba(77,184,122,0.08)',
-                           border:'1px solid #4DB87A33'}}>
+                   style={{color:'#4DB87A', background:'rgba(77,184,122,0.08)', border:'1px solid #4DB87A33'}}>
                 <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="w-4 h-4"/>
-                  شكراً! هيساعد في تحسين الموديل.
+                  <CheckCircle2 className="w-4 h-4"/> شكراً! هيساعد في تحسين الموديل.
                 </div>
-                <button onClick={clearFile}
+                <button onClick={() => clearFile(null)}
                   className="text-xs px-3 py-1.5 rounded-xl font-semibold shrink-0"
                   style={{background:'var(--primary)', color:'#fff'}}>
                   تحليل صورة تانية
                 </button>
               </div>
             )}
-
           </div>
         )}
       </div>
+
+      {/* ── Compare panel (full width below grid) ── */}
+      {compareMode && resultA && resultB && (
+        <CompareMeals mealA={resultA} mealB={resultB} portionA={portionA} portionB={portionB}/>
+      )}
     </div>
   )
 }
