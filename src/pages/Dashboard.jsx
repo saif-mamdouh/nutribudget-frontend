@@ -12,6 +12,20 @@ import { productAPI, matchAPI, optimizerAPI } from '../services/api'
 import { Spinner } from '../components/UI'
 import { useAuthStore } from '../store/authStore'
 
+// ── Mobile detection hook ─────────────────────────────────────────────────────
+// بيتفعّل تحت 768px (md breakpoint في Tailwind)
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  )
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return isMobile
+}
+
 // ── Macro rings config ────────────────────────────────────────────────────────
 const RINGS = [
   { key: 'cal',  label: 'Calories', unit: 'kcal', color: '#4DB87A' },
@@ -46,6 +60,7 @@ function calcNutritionScore(user, totalPlans, streak) {
 }
 
 function NutritionScoreWidget({ user, totalPlans, streak }) {
+  const isMobile = useIsMobile()
   const s   = calcNutritionScore(user, totalPlans, streak)
   const sc  = s.total
   const col = sc >= 80 ? '#4DB87A' : sc >= 55 ? '#f97316' : '#ef4444'
@@ -65,8 +80,13 @@ function NutritionScoreWidget({ user, totalPlans, streak }) {
   ]
   return (
     <div className="card">
-      <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:'1.5rem',alignItems:'center'}}>
-        <div className="flex flex-col items-center" style={{minWidth:100}}>
+      <div style={{
+        display:'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr auto',
+        gap: isMobile ? '1rem' : '1.5rem',
+        alignItems:'center',
+      }}>
+        <div className="flex flex-col items-center" style={{minWidth: isMobile ? 'auto' : 100}}>
           <div className="relative" style={{width:96,height:96}}>
             <svg style={{width:96,height:96,transform:'rotate(-90deg)'}} viewBox="0 0 96 96">
               <circle cx="48" cy="48" r={r} fill="none" stroke="var(--border)" strokeWidth="8"/>
@@ -100,7 +120,7 @@ function NutritionScoreWidget({ user, totalPlans, streak }) {
             ))}
           </div>
         </div>
-        <div style={{minWidth:140}}>
+        <div style={{minWidth: isMobile ? 'auto' : 140, width: isMobile ? '100%' : 'auto'}}>
           <Link to={tip.link}>
             <div style={{background:'var(--primary-lt)',borderRadius:14,padding:'12px 14px',cursor:'pointer'}}>
               <p style={{fontSize:20,marginBottom:6}}>{tip.icon}</p>
@@ -267,7 +287,7 @@ function SmartTip({ todayCal, todayProt, todayCarb, todayFat,
     <div className="card" style={{borderColor: tip.color + '33', background: tip.color + '08'}}>
       <div className="flex items-start gap-3">
         <span style={{fontSize:24}}>{tip.icon}</span>
-        <div>
+        <div dir="rtl" style={{flex:1, textAlign:'right'}}>
           <p className="text-xs font-bold mb-0.5" style={{color: tip.color}}>Smart Tip</p>
           <p className="text-sm" style={{color:'var(--text)', lineHeight:1.5}}>{tip.msg}</p>
         </div>
@@ -655,16 +675,105 @@ function RecipeOfDay() {
           {recipe.meal_type && <span>🍽️ {recipe.meal_type}</span>}
         </div>
       </div>
-      <a href="/recipes" className="block mt-2 text-center text-[11px] font-semibold py-1.5 rounded-xl transition-all"
-         style={{background:"var(--border)", color:"var(--text)"}}>
-        عرض الوصفات →
-      </a>
+      <Link to="/recipes" className="block mt-2 text-center text-[11px] font-semibold py-1.5 rounded-xl transition-all"
+      style={{background:"var(--border)", color:"var(--text)"}}>
+  عرض الوصفات →
+</Link>
     </div>
+  )
+}
+
+// ── Mobile Bottom Navigation ──────────────────────────────────────────────────
+// بيظهر بس على الموبايل. الـ Sidebar الأصلية في الـ Layout الأب لازم تتخفي
+// على الموبايل (md:hidden) عشان متتعارضش. شوف الـ comment تحت الكود.
+function MobileBottomNav({ user }) {
+  const items = [
+    { to:'/dashboard',   Icon: Target,     label:'Home' },
+    { to:'/optimize',    Icon: Zap,        label:'Plans' },
+    { to:'/vision',      Icon: Camera,     label:'Scan', primary: true },
+    { to:'/history',     Icon: TrendingUp, label:'History' },
+    { to:'/profile',     Icon: Salad,      label:'Profile' },
+  ]
+  // active = الصفحة الحالية. بنستخدم window.location لإنه أبسط من useLocation هنا.
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/dashboard'
+
+  return (
+    <nav
+      style={{
+        position:'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        background:'var(--card, #0a1410)',
+        borderTop:'0.5px solid var(--border)',
+        backdropFilter:'blur(12px)',
+        WebkitBackdropFilter:'blur(12px)',
+        padding:'10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px)',
+        display:'flex',
+        justifyContent:'space-around',
+        alignItems:'center',
+        gap: 4,
+      }}
+    >
+      {items.map(({to, Icon, label, primary}) => {
+        const active = currentPath === to
+        if (primary) {
+          return (
+            <Link key={to} to={to} style={{flexShrink: 0}}>
+              <button
+                aria-label={label}
+                style={{
+                  background:'var(--primary)',
+                  border:'none',
+                  width: 52,
+                  height: 52,
+                  borderRadius:'50%',
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  cursor:'pointer',
+                  color:'#fff',
+                  marginTop:-12,
+                  boxShadow:'0 4px 12px rgba(45,122,79,0.4)',
+                }}
+              >
+                <Icon style={{width:24, height:24}}/>
+              </button>
+            </Link>
+          )
+        }
+        return (
+          <Link key={to} to={to} style={{flex: 1, textDecoration: 'none'}}>
+            <button
+              aria-label={label}
+              style={{
+                background: active ? 'var(--primary-lt)' : 'transparent',
+                border:'none',
+                padding:'6px 4px',
+                borderRadius: 12,
+                display:'flex',
+                flexDirection:'column',
+                alignItems:'center',
+                gap: 2,
+                width:'100%',
+                cursor:'pointer',
+                color: active ? 'var(--primary)' : 'var(--text-muted)',
+              }}
+            >
+              <Icon style={{width: 20, height: 20}}/>
+              <span style={{fontSize: 10, fontWeight: active ? 600 : 400}}>{label}</span>
+            </button>
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
 
 export default function Dashboard() {
   const { user }     = useAuthStore()
+  const isMobile     = useIsMobile()
   const [stats,      setStats]      = useState(null)
   const [history,    setHistory]    = useState([])
   const [totalPlans, setTotalPlans] = useState(0)
@@ -729,7 +838,7 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="page-enter space-y-5 min-h-screen pb-6">
+    <div className="page-enter space-y-5 min-h-screen" style={{paddingBottom: isMobile ? 90 : 24}}>
 
       {/* Banner */}
       <div className="relative overflow-hidden rounded-2xl text-white"
@@ -737,13 +846,13 @@ export default function Dashboard() {
                    boxShadow:'0 8px 32px rgba(27,94,56,0.4)'}}>
         <div className="absolute -right-8 -top-8 w-56 h-56 rounded-full opacity-[0.15]"
              style={{background:'radial-gradient(circle,#fff,transparent)'}}/>
-        <div className="relative p-7">
+        <div className="relative" style={{padding: isMobile ? '1.25rem' : '1.75rem'}}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
             <div>
               <p className="text-green-200 text-xs font-medium mb-1">
                 {new Date().toLocaleDateString('en-EG',{weekday:'long',day:'numeric',month:'long'})}
               </p>
-              <h1 className="text-3xl font-bold mb-1.5">
+              <h1 className="font-bold mb-1.5" style={{fontSize: isMobile ? '1.5rem' : '1.875rem'}}>
                 Good morning{user?.full_name?`, ${user.full_name.split(' ')[0]}`:''} 👋
               </h1>
               <p className="text-green-100 text-sm">
@@ -751,16 +860,16 @@ export default function Dashboard() {
                 {' · '}Budget: <strong>{user?.daily_budget_egp} EGP</strong>
               </p>
             </div>
-            <div className="flex-1 max-w-md grid grid-cols-3 gap-4">
+            <div className="flex-1 max-w-md grid grid-cols-3 gap-3 lg:gap-4">
               {[
                 {label:'Protein',pct:Math.min(100,targetProt>0?todayProt/targetProt*100:0),val:`${todayProt.toFixed(0)}g`,icon:'💪'},
                 {label:'Carbs',  pct:Math.min(100,targetCarb>0?todayCarb/targetCarb*100:0),val:`${todayCarb.toFixed(0)}g`,icon:'⚡'},
                 {label:'Fats',   pct:Math.min(100,targetFat >0?todayFat /targetFat *100:0),val:`${todayFat.toFixed(0)}g`, icon:'🧴'},
               ].map(m => (
                 <div key={m.label}>
-                  <div className="flex justify-between mb-1.5">
-                    <span className="text-[11px] text-green-200 font-medium">{m.icon} {m.label}</span>
-                    <span className="text-[11px] text-white font-bold">{Math.round(m.pct)}%</span>
+                  <div className="flex justify-between mb-1.5 gap-1">
+                    <span className="text-[10px] lg:text-[11px] text-green-200 font-medium truncate">{m.icon} {m.label}</span>
+                    <span className="text-[10px] lg:text-[11px] text-white font-bold shrink-0">{Math.round(m.pct)}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-white/20">
                     <div className="h-full rounded-full bg-white transition-all" style={{width:`${m.pct}%`}}/>
@@ -771,13 +880,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex gap-3 mt-6">
-            <Link to="/optimize">
-              <button className="btn bg-white font-semibold text-sm px-5 py-2.5" style={{color:'var(--primary)'}}>
+            <Link to="/optimize" className="flex-1 lg:flex-none">
+              <button className="btn bg-white font-semibold text-sm px-5 py-2.5 w-full lg:w-auto" style={{color:'var(--primary)'}}>
                 <Zap className="w-4 h-4"/> Generate Plan
               </button>
             </Link>
-            <Link to="/vision">
-              <button className="btn text-white text-sm font-semibold px-5 py-2.5"
+            <Link to="/vision" className="flex-1 lg:flex-none">
+              <button className="btn text-white text-sm font-semibold px-5 py-2.5 w-full lg:w-auto"
                       style={{background:'rgba(255,255,255,0.2)'}}>
                 <Camera className="w-4 h-4"/> Analyze Meal
               </button>
@@ -788,13 +897,13 @@ export default function Dashboard() {
 
       <NutritionScoreWidget user={user} totalPlans={totalPlans} streak={streak}/>
 
-      <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem'}}>
-        <div className="card text-center py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{color:'var(--text-muted)'}}>💰 Today's Budget</p>
-          <p className="text-2xl font-black font-mono" style={{color:todayBudget>(user?.daily_budget_egp||999)?'#f87171':'var(--primary)'}}>
-            {todayBudget>0?todayBudget.toFixed(0):'—'}{todayBudget>0&&<span className="text-sm font-normal"> EGP</span>}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: isMobile ? '0.5rem' : '1rem'}}>
+        <div className="card text-center" style={{padding: isMobile ? '0.75rem 0.5rem' : '1rem'}}>
+          <p className="font-semibold uppercase tracking-wider mb-1" style={{color:'var(--text-muted)', fontSize: isMobile ? 9 : 10}}>💰 {isMobile ? "Today's" : "Today's Budget"}</p>
+          <p className="font-black font-mono" style={{color:todayBudget>(user?.daily_budget_egp||999)?'#f87171':'var(--primary)', fontSize: isMobile ? '1.25rem' : '1.5rem'}}>
+            {todayBudget>0?todayBudget.toFixed(0):'—'}{todayBudget>0&&<span style={{fontSize: isMobile ? 11 : 14, fontWeight:400}}> EGP</span>}
           </p>
-          <p className="text-[10px] mt-1" style={{color:'var(--text-muted)'}}>
+          <p className="mt-1" style={{color:'var(--text-muted)', fontSize: isMobile ? 9 : 10}}>
             {todayBudget>0?`of ${user?.daily_budget_egp||'?'} EGP`:'No meals logged'}
           </p>
           {todayBudget>0&&user?.daily_budget_egp>0&&(
@@ -805,23 +914,23 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <div className="card text-center py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{color:'var(--text-muted)'}}>🔥 Current Streak</p>
-          <p className="text-2xl font-black font-mono" style={{color:streak>=7?'#a855f7':streak>=3?'#f97316':'var(--text)'}}>
-            {streak>0?streak:'—'}{streak>0&&<span className="text-sm font-normal"> days</span>}
+        <div className="card text-center" style={{padding: isMobile ? '0.75rem 0.5rem' : '1rem'}}>
+          <p className="font-semibold uppercase tracking-wider mb-1" style={{color:'var(--text-muted)', fontSize: isMobile ? 9 : 10}}>🔥 {isMobile ? 'Streak' : 'Current Streak'}</p>
+          <p className="font-black font-mono" style={{color:streak>=7?'#a855f7':streak>=3?'#f97316':'var(--text)', fontSize: isMobile ? '1.25rem' : '1.5rem'}}>
+            {streak>0?streak:'—'}{streak>0&&<span style={{fontSize: isMobile ? 11 : 14, fontWeight:400}}> days</span>}
           </p>
-          <p className="text-[10px] mt-1" style={{color:'var(--text-muted)'}}>
+          <p className="mt-1" style={{color:'var(--text-muted)', fontSize: isMobile ? 9 : 10}}>
             {streak>=7?'🏆 Amazing!':streak>=3?'⚡ Keep going!':streak>0?'🌱 Just started':'Start your streak'}
           </p>
         </div>
-        <div className="card text-center py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{color:'var(--text-muted)'}}>📋 Plans Generated</p>
-          <p className="text-2xl font-black font-mono" style={{color:'var(--primary)'}}>{totalPlans||history.length||'—'}</p>
-          <p className="text-[10px] mt-1" style={{color:'var(--text-muted)'}}>total meal plans</p>
+        <div className="card text-center" style={{padding: isMobile ? '0.75rem 0.5rem' : '1rem'}}>
+          <p className="font-semibold uppercase tracking-wider mb-1" style={{color:'var(--text-muted)', fontSize: isMobile ? 9 : 10}}>📋 {isMobile ? 'Plans' : 'Plans Generated'}</p>
+          <p className="font-black font-mono" style={{color:'var(--primary)', fontSize: isMobile ? '1.25rem' : '1.5rem'}}>{totalPlans||history.length||'—'}</p>
+          <p className="mt-1" style={{color:'var(--text-muted)', fontSize: isMobile ? 9 : 10}}>{isMobile ? 'total' : 'total meal plans'}</p>
         </div>
       </div>
 
-      <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'1rem'}}>
+      <div style={{display:'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: isMobile ? '0.5rem' : '1rem'}}>
         {RINGS.map(r => (
           <MacroRing key={r.key} label={r.label} unit={r.unit} color={r.color}
             value={r.key==='cal'?todayCal:r.key==='prot'?todayProt:r.key==='carb'?todayCarb:todayFat}
@@ -912,7 +1021,7 @@ export default function Dashboard() {
 
           <div className="card">
             <h3 className="font-semibold text-sm mb-4" style={{color:'var(--text)'}}>Quick Actions</h3>
-            <div className="grid gap-2" style={{gridTemplateColumns:`repeat(${user?.is_admin ? 6 : 4}, 1fr)`}}>
+            <div className="grid gap-2" style={{gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : `repeat(${user?.is_admin ? 6 : 4}, 1fr)`}}>
               {[
                 {to:'/optimize',    Icon:Zap,        label:'Optimize Plan',   desc:'MILP solver'},
                 {to:'/vision',      Icon:Camera,     label:'Scan Meal',       desc:'AI recognition'},
@@ -940,6 +1049,9 @@ export default function Dashboard() {
 
         </div>
       </div>
+
+      {/* ── Mobile Bottom Navigation ─────────────────────────────────── */}
+      {isMobile && <MobileBottomNav user={user}/>}
 
     </div>
   )

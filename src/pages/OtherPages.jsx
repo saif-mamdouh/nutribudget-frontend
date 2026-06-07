@@ -400,9 +400,16 @@ export function HistoryPage() {
   } : null
 
   // Apply filter
-  const filteredPlans = filter === 'all'
+  // Weekly plans only show if explicitly saved by user (solver_status contains ':saved')
+  const filteredPlans = (filter === 'all'
     ? plans
     : plans.filter(p => (p.period || 'single') === filter)
+  ).filter(p => {
+    if ((p.period || 'single') === 'weekly') {
+      return (p.status || p.solver_status || '').includes(':saved')
+    }
+    return true
+  })
 
   const visiblePlans = showAll ? filteredPlans : filteredPlans.slice(0, PAGE_SIZE)
 

@@ -33,7 +33,11 @@ export const useAuthStore = create((set, get) => ({
   },
 
   logout: () => {
+    // Preserve user-data keys across logout
+    const keep = ['nb_weekly_plan']
+    const saved = keep.map(k => [k, localStorage.getItem(k)])
     localStorage.clear()
+    saved.forEach(([k, v]) => { if (v) localStorage.setItem(k, v) })
     set({ user: null })
   },
 
@@ -44,7 +48,11 @@ export const useAuthStore = create((set, get) => ({
       const { data } = await userAPI.getMe()
       set({ user: data })
     } catch {
+      // Preserve user-data keys on auth failure too
+      const keep = ['nb_weekly_plan']
+      const saved = keep.map(k => [k, localStorage.getItem(k)])
       localStorage.clear()
+      saved.forEach(([k, v]) => { if (v) localStorage.setItem(k, v) })
     }
   },
 }))

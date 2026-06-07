@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { optimizerAPI } from '../services/api'
 import { useAuthStore } from '../store/authStore'
 import { Zap, ShoppingCart, UtensilsCrossed, CalendarDays, Coffee, Search, X,
@@ -686,6 +687,14 @@ function SwapModal({ day, mealType, planId, onSwapped, onClose }) {
   const [loading, setLoading] = useState(false)
   const [swapErr, setSwapErr] = useState('')
 
+  // Lock body scroll + scroll to top so modal is always visible
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   useEffect(() => {
     setLoading(true)
     import('../services/api').then(({ recipeAPI }) => {
@@ -693,7 +702,20 @@ function SwapModal({ day, mealType, planId, onSwapped, onClose }) {
         .then(r => {
           // handle both list formats: array or { items: [] }
           const list = Array.isArray(r.data) ? r.data : (r.data?.items || r.data?.recipes || [])
-          setRecipes(list)
+          // Compute cost & calories from ingredients array (already parsed by backend)
+          const enriched = list.map(recipe => {
+            const ings = Array.isArray(recipe.ingredients) ? recipe.ingredients : []
+            const cost     = ings.reduce((s, i) => s + (i.cost_egp  || 0), 0)
+            const calories = ings.reduce((s, i) => s + (i.calories  || 0), 0)
+            const protein  = ings.reduce((s, i) => s + (i.protein_g || 0), 0)
+            return {
+              ...recipe,
+              cost_egp:  cost     > 0 ? Math.round(cost  * 10) / 10 : (recipe.cost_egp  || null),
+              calories:  calories > 0 ? Math.round(calories)         : (recipe.calories  || null),
+              protein_g: protein  > 0 ? Math.round(protein * 10) / 10: (recipe.protein_g || null),
+            }
+          })
+          setRecipes(enriched)
           setLoading(false)
         })
         .catch(() => setLoading(false))
@@ -721,7 +743,6 @@ function SwapModal({ day, mealType, planId, onSwapped, onClose }) {
         new_recipe_id: recipeId,
         recipe_id:     recipeId,    // belt & suspenders
       })
-      console.log('[SwapMeal] response:', res.data)  // 🔍 temp debug
       onSwapped(res.data)
       onClose()
     } catch(e) {
@@ -730,58 +751,185 @@ function SwapModal({ day, mealType, planId, onSwapped, onClose }) {
     }
   }
 
+  const mealColor = MEAL_COLORS[mealType] || '#4DB87A'
+  const mealEmoji = mealType === 'فطار' ? '🌅' : mealType === 'غداء' ? '☀️' : '🌙'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style={{background:'rgba(0,0,0,0.7)'}}>
-      <div className="card w-full max-w-md max-h-[80vh] flex flex-col"
-           style={{background:'var(--bg-card)'}}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm font-bold" style={{color:'var(--text)'}}>
-              Swap Meal — Day {day} · {mealType}
-            </p>
-            <p className="text-xs" style={{color:'var(--text-muted)'}}>Choose a replacement</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:opacity-70"
-                  style={{color:'var(--text-muted)'}}><X className="w-4 h-4"/></button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+         style={{background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)'}}>
+      {/* Sheet slides up on mobile, centered modal on desktop */}
+      <div className="w-full sm:max-w-lg flex flex-col rounded-t-3xl sm:rounded-2xl overflow-hidden"
+           style={{
+             background:'var(--bg-card)',
+             maxHeight:'88vh',
+             boxShadow:'0 -8px 40px rgba(0,0,0,0.4)',
+             border:'1px solid rgba(255,255,255,0.06)',
+           }}>
+
+        {/* Drag handle (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full" style={{background:'var(--border)'}}/>
         </div>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search recipes..." className="input mb-3 text-sm"/>
+
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 flex items-start justify-between"
+             style={{borderBottom:'1px solid var(--border)'}}>
+          <div className="flex items-center gap-3">
+            {/* Colored badge for meal type */}
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0"
+                 style={{background:`${mealColor}20`}}>
+              {mealEmoji}
+            </div>
+            <div>
+              <p className="font-bold text-base" style={{color:'var(--text)'}}>
+                استبدال وجبة
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                      style={{background:`${mealColor}20`, color: mealColor}}>
+                  {mealType}
+                </span>
+                <span className="text-xs" style={{color:'var(--text-muted)'}}>· يوم {day}</span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl transition-all hover:opacity-70"
+                  style={{background:'var(--border)', color:'var(--text-muted)'}}>
+            <X className="w-3.5 h-3.5"/>
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-5 py-3" style={{borderBottom:'1px solid var(--border)'}}>
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                    style={{color:'var(--text-muted)'}}/>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="ابحث عن وجبة..."
+              dir="auto"
+              className="w-full pr-10 pl-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+              style={{
+                background:'var(--bg)',
+                border:'1.5px solid var(--border)',
+                color:'var(--text)',
+              }}
+              onFocus={e => e.target.style.borderColor = mealColor}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+            {search && (
+              <button onClick={() => setSearch('')}
+                      className="absolute left-3 top-1/2 -translate-y-1/2"
+                      style={{color:'var(--text-muted)'}}>
+                <X className="w-3.5 h-3.5"/>
+              </button>
+            )}
+          </div>
+          {/* Results count */}
+          {!loading && (
+            <p className="text-[11px] mt-2" style={{color:'var(--text-muted)'}}>
+              {filtered.length} وجبة متاحة
+              {search && ` · نتائج "${search}"`}
+            </p>
+          )}
+        </div>
+
+        {/* Error */}
         {swapErr && (
-          <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2 mb-2">
-            ⚠️ {swapErr}
-          </p>
+          <div className="mx-5 mt-3 flex items-start gap-2 px-3 py-2.5 rounded-xl"
+               style={{background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)'}}>
+            <span className="text-sm shrink-0">⚠️</span>
+            <p className="text-xs text-red-400">{swapErr}</p>
+          </div>
         )}
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {loading
-            ? <div className="flex justify-center py-8"><Spinner size="md"/></div>
-            : filtered.length === 0
-              ? <p className="text-center text-xs py-8" style={{color:'var(--text-muted)'}}>
-                  No {mealType} recipes found
-                </p>
-              : filtered.map((r, i) => {
-                  const name     = r.recipe_name || r.name || 'Unknown'
-                  const recipeId = r.recipe_id   || r.id
-                  return (
-                    <button key={recipeId || i} onClick={() => doSwap(r)}
-                      className="w-full flex items-center justify-between p-3 rounded-xl text-left hover:opacity-80 transition-all"
-                      style={{background:'var(--primary-lt)'}}>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate" style={{color:'var(--text)'}}>{name}</p>
-                        <p className="text-xs" style={{color:'var(--text-muted)'}}>
-                          {r.prep_time} min
-                          {r.calories && ` · ${r.calories?.toFixed?.(0)} kcal`}
-                          {r.cost_egp && ` · ${r.cost_egp?.toFixed?.(1)} EGP`}
-                        </p>
-                      </div>
-                      <span className="text-xs px-2 py-1 rounded-lg font-medium ml-2 shrink-0"
-                            style={{background:`${MEAL_COLORS[mealType]}20`, color:MEAL_COLORS[mealType]}}>
-                        {mealType}
-                      </span>
-                    </button>
-                  )
-                })
-          }
+
+        {/* Recipe list */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Spinner size="md"/>
+              <p className="text-sm" style={{color:'var(--text-muted)'}}>جاري تحميل الوجبات...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <span className="text-3xl">🍽️</span>
+              <p className="text-sm font-semibold" style={{color:'var(--text)'}}>مفيش نتائج</p>
+              <p className="text-xs" style={{color:'var(--text-muted)'}}>جرب كلمة تانية</p>
+            </div>
+          ) : (
+            filtered.map((r, i) => {
+              const name     = r.recipe_name || r.name || 'Unknown'
+              const recipeId = r.recipe_id   || r.id
+              // prep_time bucketing for quick/medium/long visual
+              const prepMin  = r.prep_time || 0
+              const prepColor = prepMin <= 15 ? '#4DB87A' : prepMin <= 30 ? '#f97316' : '#ef4444'
+              const prepLabel = prepMin <= 15 ? 'سريع' : prepMin <= 30 ? 'متوسط' : 'يحتاج وقت'
+              return (
+                <button key={recipeId || i} onClick={() => doSwap(r)}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl text-right transition-all group"
+                  style={{
+                    background:'var(--bg)',
+                    border:'1.5px solid var(--border)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = mealColor
+                    e.currentTarget.style.background = `${mealColor}08`
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border)'
+                    e.currentTarget.style.background = 'var(--bg)'
+                  }}>
+                  {/* Icon */}
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base"
+                       style={{background:`${mealColor}15`}}>
+                    {mealEmoji}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 text-right">
+                    <p className="text-sm font-semibold truncate mb-1.5" style={{color:'var(--text)'}}>{name}</p>
+                    <div className="flex items-center gap-1.5 flex-row-reverse flex-wrap">
+                      {r.cost_egp ? (
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                              style={{background:`${mealColor}22`, color:mealColor}}>
+                          {r.cost_egp.toFixed(1)} <span className="font-normal opacity-70">EGP</span>
+                        </span>
+                      ) : null}
+                      {r.calories ? (
+                        <span className="inline-flex items-center gap-0.5 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                              style={{background:'rgba(249,115,22,0.15)', color:'#fb923c'}}>
+                          {Math.round(r.calories)} <span className="font-normal opacity-70">kcal</span>
+                        </span>
+                      ) : null}
+                      {r.prep_time ? (
+                        <span className="inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full"
+                              style={{background:`${prepColor}18`, color:prepColor}}>
+                          ⏱ {r.prep_time} دقيقة
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Arrow */}
+                  <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all"
+                       style={{background:`${mealColor}15`, color: mealColor}}>
+                    <span className="text-xs">→</span>
+                  </div>
+                </button>
+              )
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4" style={{borderTop:'1px solid var(--border)'}}>
+          <button onClick={onClose}
+                  className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
+                  style={{background:'var(--border)', color:'var(--text-muted)'}}>
+            إلغاء
+          </button>
         </div>
       </div>
     </div>
@@ -800,15 +948,41 @@ function WeeklyCalendarView({ weeklyPlan: propPlan, setWeeklyPlan, freshStart = 
   const [histLoading,  setHistLoading] = useState(false)
 
   useEffect(() => {
-    setLoadingPlan(true)
-    optimizerAPI.weeklyActive()
-      .then(r => {
-        const p = r.data?.plan || (r.data?.plan_id || r.data?.id ? r.data : null)
-        if (p) { setPlan(p); setWeeklyPlan?.(p) }
-        else if (propPlan) setPlan(propPlan)
-      })
-      .catch(() => { if (propPlan) setPlan(propPlan) })
-      .finally(() => setLoadingPlan(false))
+    // freshStart = brand-new plan just generated
+    if (freshStart && propPlan) {
+      // Use propPlan immediately so UI shows instantly
+      setPlan(propPlan)
+      setWeeklyPlan?.(propPlan)
+      setLoadingPlan(false)
+      // Then silently fetch real plan_id from backend in case propPlan is missing it
+      if (!propPlan.plan_id && !propPlan.id) {
+        optimizerAPI.weeklyActive()
+          .then(r => {
+            const p = r.data?.plan || (r.data?.plan_id ? r.data : null)
+            if (p?.plan_id || p?.id) {
+              const enriched = { ...propPlan, plan_id: p.plan_id ?? p.id }
+              setPlan(enriched)
+              setWeeklyPlan?.(enriched)
+              try { localStorage.setItem('nb_weekly_plan', JSON.stringify(enriched)) } catch {}
+            }
+          }).catch(() => {})
+      }
+    } else {
+      // Only show plan from localStorage (set when user clicks "حفظ وعرض في الكالندر")
+      // Don't auto-fetch from API — user must explicitly save to calendar
+      const saved = (() => {
+        try {
+          const s = localStorage.getItem('nb_weekly_plan')
+          return s ? JSON.parse(s) : null
+        } catch { return null }
+      })()
+      if (saved) {
+        setPlan(saved)
+        setWeeklyPlan?.(saved)
+      }
+      // Don't use propPlan here — calendar only shows what user explicitly saved
+      setLoadingPlan(false)
+    }
 
     import('../services/api').then(({ optimizerAPI: oapi }) => {
       oapi.weeklyHistory()
@@ -938,30 +1112,63 @@ function WeeklyCalendarView({ weeklyPlan: propPlan, setWeeklyPlan, freshStart = 
 
   const handleSwapped = (data) => {
     if (!plan) return
-    // Backend may return: { new_meal, new_totals } OR the full updated plan
+
+    let updated
+
     if (data?.meals) {
-      // Full plan returned
-      setPlan(data)
-      setWeeklyPlan?.(data)
-      return
+      // Backend returned the full updated plan
+      updated = data
+    } else {
+      // Partial update — backend returns { new_meal, new_totals } or { meal, totals }
+      const newMeal   = data?.new_meal   ?? data?.meal   ?? data
+      const newTotals = data?.new_totals ?? data?.totals ?? null
+
+      if (!newMeal?.recipe_name && !newMeal?.recipe_id) return
+
+      // Normalize field names (backend might use cost_egp vs cost, protein_g vs protein)
+      const normalizedMeal = {
+        ...newMeal,
+        cost_egp:    newMeal.cost_egp  ?? newMeal.cost,
+        calories:    newMeal.calories,
+        protein_g:   newMeal.protein_g ?? newMeal.protein,
+        carbs_g:     newMeal.carbs_g   ?? newMeal.carbs,
+        fats_g:      newMeal.fats_g    ?? newMeal.fats,
+      }
+
+      updated = {
+        ...plan,
+        meals: plan.meals.map(m =>
+          (m.day === normalizedMeal.day || m.day === newMeal.day_num) &&
+          m.meal_type === (normalizedMeal.meal_type ?? newMeal.meal_type)
+            ? { ...m, ...normalizedMeal }
+            : m
+        ),
+      }
+
+      // Find the old meal to calculate the diff
+      const oldMeal = plan.meals.find(m =>
+        (m.day === normalizedMeal.day || m.day === newMeal.day_num) &&
+        m.meal_type === (normalizedMeal.meal_type ?? newMeal.meal_type)
+      )
+
+      if (oldMeal) {
+        // Adjust totals by the difference only (safe even if some meals lack cost_egp)
+        updated.total_cost_egp  = (plan.total_cost_egp  ?? 0) - (oldMeal.cost_egp  ?? oldMeal.cost    ?? 0) + (normalizedMeal.cost_egp  ?? 0)
+        updated.total_calories  = (plan.total_calories  ?? 0) - (oldMeal.calories  ?? 0)                    + (normalizedMeal.calories  ?? 0)
+        updated.total_protein_g = (plan.total_protein_g ?? 0) - (oldMeal.protein_g ?? oldMeal.protein ?? 0) + (normalizedMeal.protein_g ?? 0)
+        updated.total_carbs_g   = (plan.total_carbs_g   ?? 0) - (oldMeal.carbs_g   ?? oldMeal.carbs   ?? 0) + (normalizedMeal.carbs_g   ?? 0)
+        updated.total_fats_g    = (plan.total_fats_g    ?? 0) - (oldMeal.fats_g    ?? oldMeal.fats    ?? 0) + (normalizedMeal.fats_g    ?? 0)
+      }
+
+      // NOTE: We intentionally ignore new_totals from backend
+      // because it returns the day's total, not the full weekly total.
+      // The diff-based calculation above is correct.
     }
-    // Partial update
-    const newMeal   = data?.new_meal
-    const newTotals = data?.new_totals
-    if (!newMeal) return
-    const updated = {
-      ...plan,
-      meals: plan.meals.map(m =>
-        m.day === newMeal.day && m.meal_type === newMeal.meal_type ? newMeal : m
-      ),
-      ...(newTotals && {
-        total_cost_egp:  newTotals.cost      ?? plan.total_cost_egp,
-        total_calories:  newTotals.calories  ?? plan.total_calories,
-        total_protein_g: newTotals.protein   ?? plan.total_protein_g,
-      }),
-    }
+
     setPlan(updated)
     setWeeklyPlan?.(updated)
+    // Persist updated plan
+    try { localStorage.setItem('nb_weekly_plan', JSON.stringify(updated)) } catch {}
   }
 
   if (loadingPlan) return (
@@ -1227,13 +1434,14 @@ function WeeklyCalendarView({ weeklyPlan: propPlan, setWeeklyPlan, freshStart = 
         defaultOpen={false}/>
 
       {/* Swap modal */}
-      {swapping && (
+      {swapping && createPortal(
         <SwapModal
           day={swapping.day}
           mealType={swapping.mealType}
           planId={plan.plan_id ?? plan.id}
           onSwapped={handleSwapped}
-          onClose={() => setSwapping(null)}/>
+          onClose={() => setSwapping(null)}/>,
+        document.body
       )}
     </div>
   )
@@ -1442,8 +1650,12 @@ export default function OptimizePage() {
   const [fatsG,     setFatsG]    = useState(user?.daily_fats_g||50)
   const [maxItems,  setMaxItems] = useState(12)
   const [result,    setResult]   = useState(null)
-  const [weeklyPlan,setWeeklyPlan] = useState(null)  // persists last weekly plan for calendar
+  // weeklyPlan starts null — only set when user clicks "حفظ وعرض في الكالندر"
+  const [weeklyPlan, setWeeklyPlan] = useState(null)
   const [weeklyPlanKey,  setWeeklyPlanKey]  = useState(0)
+
+  // NOTE: weeklyPlan is NOT auto-saved to localStorage
+  // It only gets saved when user clicks "حفظ وعرض في الكالندر" 
   const [freshWeekly,    setFreshWeekly]    = useState(false)  // skip old logs on new plan
   const [loading,   setLoading]  = useState(false)
   const [error,     setError]    = useState(null)
@@ -1562,9 +1774,20 @@ export default function OptimizePage() {
         if (data.status==='infeasible') throw new Error(data.solver_message)
         setResult({ type:'meal', data })
         if (planType === 'weekly') {
-          setWeeklyPlan(data)
+          // If backend didn't return plan_id, try fetching the active plan to get it
+          let enrichedData = data
+          if (!data.plan_id && !data.id) {
+            try {
+              const active = await optimizerAPI.weeklyActive()
+              const ap = active.data?.plan || (active.data?.plan_id ? active.data : null)
+              if (ap?.plan_id || ap?.id) {
+                enrichedData = { ...data, plan_id: ap.plan_id ?? ap.id }
+              }
+            } catch(e) { /* best effort */ }
+          }
+          // Don't auto-set weeklyPlan — only set when user clicks save button
+          // Store enriched data in result so it's available for the save button
           setWeeklyPlanKey(k => k + 1)
-          setFreshWeekly(true)   // ← reset logged state in calendar
         }
       } else {
         const { data } = await optimizerAPI.plan({ budget_egp:budget, calories, protein_g:protein,
@@ -2068,6 +2291,64 @@ export default function OptimizePage() {
               {/* Accept Plan button — single/daily only */}
               {result.data.plan_type !== 'weekly' && result.data.plan_id && (
                 <AcceptPlanButton plan={result.data}/>
+              )}
+
+              {/* Weekly plan actions */}
+              {result.data.plan_type === 'weekly' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={async () => {
+                      // Enrich with plan_id from active plan if missing
+                      let planData = result.data
+                      if (!planData.plan_id && !planData.id) {
+                        try {
+                          const active = await optimizerAPI.weeklyActive()
+                          const ap = active.data?.plan || (active.data?.plan_id ? active.data : null)
+                          if (ap?.plan_id || ap?.id) {
+                            planData = { ...planData, plan_id: ap.plan_id ?? ap.id }
+                          }
+                        } catch(e) { /* best effort */ }
+                      }
+                      // Mark plan as saved in DB via plan_name flag
+                      const pid = planData.plan_id ?? planData.id
+                      if (pid) {
+                        try {
+                          await fetch(`/api/v1/optimize/weekly/${pid}/mark-saved`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json',
+                              Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+                          })
+                          planData = { ...planData, is_saved: true }
+                        } catch {}
+                      }
+                      setWeeklyPlan(planData)
+                      // Save to localStorage so it persists across logout/login
+                      try { localStorage.setItem('nb_weekly_plan', JSON.stringify(planData)) } catch {}
+                      setFreshWeekly(true)
+                      setWeeklyPlanKey(k => k + 1)
+                      setMode('calendar')
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all hover:opacity-90 active:scale-95"
+                    style={{background:'var(--primary)', color:'#fff'}}>
+                    <CalendarDays className="w-4 h-4"/>
+                    حفظ وعرض في الكالندر ✅
+                  </button>
+                  <button
+                    onClick={() => { setResult(null); optimize() }}
+                    disabled={loading}
+                    className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all hover:opacity-90 active:scale-95 border-2"
+                    style={{
+                      background: loading ? 'var(--primary-lt)' : 'transparent',
+                      borderColor: 'var(--primary)',
+                      color: 'var(--primary)',
+                      opacity: loading ? 0.7 : 1,
+                    }}>
+                    {loading
+                      ? <><span className="animate-spin">⏳</span> جاري التوليد...</>
+                      : <><Zap className="w-4 h-4"/> خطة جديدة 🔄</>}
+                  </button>
+                </div>
               )}
 
               {/* Macro Distribution Donut */}

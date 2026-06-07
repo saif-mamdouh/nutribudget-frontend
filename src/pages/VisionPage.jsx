@@ -527,17 +527,48 @@ export default function VisionPage() {
 
             {/* ── Low confidence warning ── */}
             {result.confidence < 0.70 && (
-              <div className="flex items-center gap-3 p-3 rounded-2xl"
-                   style={{background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)'}}>
-                <AlertTriangle className="w-5 h-5 shrink-0" style={{color:'#f59e0b'}}/>
-                <div>
-                  <p className="text-sm font-semibold" style={{color:'#f59e0b'}}>
-                    النتيجة مش متأكدة ({(result.confidence * 100).toFixed(0)}%)
-                  </p>
-                  <p className="text-xs mt-0.5" style={{color:'var(--text-muted)'}}>
-                    تأكد يدوياً من نوع الوجبة — الـ AI مش واثق من التحليل ده
-                  </p>
+              <div className="p-4 rounded-2xl space-y-3"
+                   style={{background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)'}}>
+                {/* Header */}
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{color:'#f59e0b'}}/>
+                  <div>
+                    <p className="text-sm font-bold" style={{color:'#f59e0b'}}>
+                      الـ AI مش واثق ({(result.confidence * 100).toFixed(0)}% فقط)
+                    </p>
+                    <p className="text-xs mt-0.5" style={{color:'var(--text-muted)'}}>
+                      النتيجة ممكن تكون غلط — جرب تبعت صورة أوضح للأكل
+                    </p>
+                  </div>
                 </div>
+
+                {/* Tips */}
+                <div className="rounded-xl p-3 space-y-1.5"
+                     style={{background:'rgba(245,158,11,0.08)'}}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-2"
+                     style={{color:'#f59e0b'}}>نصايح للصورة الجاية</p>
+                  {[
+                    { icon: '📸', text: 'صوّر الأكل من فوق مباشرة (top-down)' },
+                    { icon: '💡', text: 'تأكد الإضاءة كويسة ومفيش ضل' },
+                    { icon: '🍽️', text: 'خلي الأكل يملي معظم الصورة' },
+                    { icon: '🚫', text: 'ابتعد عن الصور المعبأة أو اللي فيها نص كتير' },
+                  ].map(({icon, text}) => (
+                    <div key={text} className="flex items-center gap-2">
+                      <span className="text-xs">{icon}</span>
+                      <span className="text-xs" style={{color:'var(--text-muted)'}}>{text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Retry button */}
+                <button
+                  onClick={clearFile}
+                  className="w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                  style={{background:'rgba(245,158,11,0.15)', color:'#f59e0b',
+                          border:'1px solid rgba(245,158,11,0.3)'}}>
+                  <RotateCcw className="w-3.5 h-3.5"/>
+                  ابعت صورة تانية
+                </button>
               </div>
             )}
 
